@@ -1,0 +1,14 @@
+{
+  "name": "express-security-demo",
+  "version": "1.0.0",
+  "private": true,
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "adm-zip": "0.4.7",
+    "express": "^4.21.2",
+    "express-jwt": "0.1.3"
+  }
+}
