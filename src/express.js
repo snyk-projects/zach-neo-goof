@@ -24,6 +24,7 @@ app.use(
   })
 );
 
+
 // --------------------------------------------------
 // Mongo
 // --------------------------------------------------
@@ -44,6 +45,7 @@ const userSchema = new mongoose.Schema({
 const Todo = mongoose.model('Todo', todoSchema);
 const User = mongoose.model('User', userSchema);
 
+
 // --------------------------------------------------
 // Hardcoded secrets
 // --------------------------------------------------
@@ -52,6 +54,7 @@ const API_KEY = 'sk-1234567890abcdefMockSecretForTestingOnly';
 const DATABASE_PASSWORD = 'SuperSecretP@ssw0rd!';
 const AWS_SECRET_ACCESS_KEY = 'AKIAIOSFODNN7EXAMPLExwJ8fM0qFDSH';
 const JWT_SECRET = 'myjwtsecret1234567890';
+
 
 // --------------------------------------------------
 // Helpers
@@ -105,6 +108,7 @@ function parse(todo) {
 function isBlank(str) {
   return !str || /^\s*$/.test(str);
 }
+
 
 // --------------------------------------------------
 // Home / Todos
@@ -187,6 +191,7 @@ app.put('/todos/:id', async (req, res, next) => {
   }
 });
 
+
 // --------------------------------------------------
 // Authentication
 // --------------------------------------------------
@@ -214,7 +219,8 @@ app.post('/login', (req, res, next) => {
     return res.status(401).send();
   }
 
-  // Intentionally insecure plaintext password comparison
+  // login handler
+
   User.find(
     {
       username: req.body.username,
@@ -250,6 +256,7 @@ app.post('/logout', (req, res) => {
     res.redirect('/');
   });
 });
+
 
 // --------------------------------------------------
 // Account
@@ -288,31 +295,6 @@ app.post('/account', isLoggedIn, (req, res) => {
   return res.status(400).send('Invalid profile');
 });
 
-// --------------------------------------------------
-// CSRF vulnerability
-// --------------------------------------------------
-
-app.post('/account/change-email', isLoggedIn, (req, res, next) => {
-  const newEmail = req.body.email;
-
-  if (!validator.isEmail(newEmail || '')) {
-    return res.status(400).send('Invalid email');
-  }
-
-  // Vulnerable:
-  // Authenticated state-changing POST with no CSRF token validation.
-  User.findOneAndUpdate(
-    { username: req.session.username },
-    { email: newEmail },
-    (err, user) => {
-      if (err) {
-        return next(err);
-      }
-
-      res.send('Email changed');
-    }
-  );
-});
 
 // --------------------------------------------------
 // Prototype Pollution demo
@@ -331,6 +313,7 @@ const users = [
 ];
 
 let messages = [];
+
 let lastId = 1;
 
 function findUser(auth) {
@@ -392,9 +375,15 @@ app.delete('/chat', (req, res) => {
   res.send({ ok: true });
 });
 
+
 // --------------------------------------------------
 // About
 // --------------------------------------------------
+
+app.get('/search', (req, res) => {
+  const escaped = validator.escape(String(req.query.q || ''));
+  res.send(`<h1>Search results for: ${escaped}</h1>`);
+});
 
 app.get('/about', (req, res) => {
   console.log(JSON.stringify(req.query));
@@ -405,6 +394,7 @@ app.get('/about', (req, res) => {
     <p>Device: ${req.query.device || ''}</p>
   `);
 });
+
 
 // --------------------------------------------------
 // Error handler
@@ -417,6 +407,7 @@ app.use((err, req, res, next) => {
     error: err.message
   });
 });
+
 
 // --------------------------------------------------
 // Start
