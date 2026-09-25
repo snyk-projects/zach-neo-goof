@@ -381,7 +381,8 @@ app.delete('/chat', (req, res) => {
 // --------------------------------------------------
 
 app.get('/search', (req, res) => {
-  res.send(`<h1>Search results for: ${req.query.q}</h1>`);
+  const escaped = validator.escape(String(req.query.q || ''));
+  res.send(`<h1>Search results for: ${escaped}</h1>`);
 });
 
 app.get('/about', (req, res) => {
