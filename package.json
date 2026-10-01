@@ -7,7 +7,6 @@
     "start": "node app.js"
   },
   "dependencies": {
-    "@openzeppelin/ui-components": "^3.9.0",
     "adm-zip": "0.4.7",
     "axios": "0.21.1",
     "express": "^4.21.2",
