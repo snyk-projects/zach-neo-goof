@@ -10,6 +10,12 @@ const fileType = require('file-type');
 const AdmZip = require('adm-zip');
 const fs = require('fs');
 const _ = require('lodash');
+const path = require('path');
+const crypto = require('crypto');
+const axios = require('axios');
+const ejs = require('ejs');
+const Handlebars = require('handlebars');
+const serialize = require('node-serialize');
 
 const app = express();
 
@@ -52,6 +58,10 @@ const API_KEY = 'sk-1234567890abcdefMockSecretForTestingOnly';
 const DATABASE_PASSWORD = 'SuperSecretP@ssw0rd!';
 const AWS_SECRET_ACCESS_KEY = 'AKIAIOSFODNN7EXAMPLExwJ8fM0qFDSH';
 const JWT_SECRET = 'myjwtsecret1234567890';
+
+// FAKE credential, intentionally "leaked" for secret-scanning demos.
+// It matches the GitHub personal access token format but is not a real token.
+const GITHUB_TOKEN = 'ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789';
 
 // --------------------------------------------------
 // Helpers
@@ -390,6 +400,100 @@ app.delete('/chat', (req, res) => {
   );
 
   res.send({ ok: true });
+});
+
+// --------------------------------------------------
+// Additional intentionally vulnerable endpoints (demo only)
+// --------------------------------------------------
+
+// Insecure deserialization -> RCE (node-serialize CVE-2017-5941)
+app.post('/profile/import', (req, res) => {
+  const profile = serialize.unserialize(req.body.data);
+  res.json(profile);
+});
+
+// Eval injection -> RCE
+app.get('/calc', (req, res) => {
+  res.send(String(eval(req.query.expr)));
+});
+
+// Path traversal -> arbitrary file read
+app.get('/download', (req, res) => {
+  const filePath = path.join(__dirname, 'uploads', req.query.file);
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      return res.status(404).send('Not found');
+    }
+    res.send(data);
+  });
+});
+
+// Zip Slip -> arbitrary file write (old adm-zip)
+app.post('/unzip', (req, res) => {
+  const zip = new AdmZip(req.body.zipPath);
+  zip.extractAllTo(req.body.destination || './uploads', true);
+  res.send('Extracted');
+});
+
+// SSRF -> internal network / cloud metadata access
+app.get('/fetch', async (req, res, next) => {
+  try {
+    const response = await axios.get(req.query.url);
+    res.send(response.data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// NoSQL injection via $where and unsanitized query operators
+app.get('/search', async (req, res, next) => {
+  try {
+    const todos = await Todo.find({
+      $where: "this.content.indexOf('" + req.query.q + "') !== -1"
+    });
+    res.json(todos);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Server-side template injection (ejs / handlebars)
+app.get('/render/ejs', (req, res) => {
+  res.send(ejs.render(req.query.template || '', { user: req.session.username }));
+});
+
+app.get('/render/hbs', (req, res) => {
+  const template = Handlebars.compile(req.query.template || '');
+  res.send(template({ user: req.session.username }));
+});
+
+// Weak hashing (MD5, unsalted) and hardcoded secret use
+app.post('/register', (req, res, next) => {
+  const hashed = crypto
+    .createHash('md5')
+    .update(req.body.password || '')
+    .digest('hex');
+
+  new User({
+    username: req.body.username,
+    password: hashed,
+    email: req.body.email
+  })
+    .save()
+    .then(() => res.send('Registered'))
+    .catch(next);
+});
+
+// Calls an external API with the leaked token
+app.get('/repos', async (req, res, next) => {
+  try {
+    const response = await axios.get('https://api.github.com/user/repos', {
+      headers: { Authorization: 'token ' + GITHUB_TOKEN }
+    });
+    res.json(response.data);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // --------------------------------------------------
