@@ -61,7 +61,7 @@ const JWT_SECRET = 'myjwtsecret1234567890';
 
 // FAKE credential, intentionally "leaked" for secret-scanning demos.
 // It matches the GitHub personal access token format but is not a real token.
-const GITHUB_TOKEN = 'ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789';
+const GITHUB_TOKEN = 'ghp_vYKGOrCjBYSYNRMNAoxJLHbyMFc56lQDDrBr';
 
 // --------------------------------------------------
 // Helpers
